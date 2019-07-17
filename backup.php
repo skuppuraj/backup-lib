@@ -16,7 +16,8 @@ class SYNC_PclZip {
 	private $include_mtime = false;
 	public $last_error;
 	public $backups_dir_location;
-
+	public $debug;
+	public $use_bin_zip;
 	public function __construct() {
 		$this->addfiles = array();
 		$this->adddirs = array();
@@ -178,8 +179,7 @@ class SYNC_BinZip extends SYNC_PclZip {
 	private $binzip;
 
 	public function __construct() {
-		global $IWP_backup;
-		$this->binzip = $IWP_backup->binzip;
+		$this->binzip = $this->use_bin_zip;
 		if (!is_string($this->binzip)) {
 			$this->last_error = "No binary zip was found";
 			return false;
@@ -213,7 +213,6 @@ class SYNC_BinZip extends SYNC_PclZip {
 		}
 
 		global $iwp_backup_core, $IWP_backup;
-		$iwp_backup_dir = $iwp_backup_core->backups_dir_location();
 
 		$activity = false;
 
@@ -230,7 +229,6 @@ class SYNC_BinZip extends SYNC_PclZip {
 		$exec .= " -v -@ ".escapeshellarg($this->path);
 
 		$last_recorded_alive = time();
-		$something_useful_happened = $iwp_backup_core->something_useful_happened;
 		$orig_size = file_exists($this->path) ? filesize($this->path) : 0;
 		$last_size = $orig_size;
 		clearstatcache();
@@ -283,21 +281,17 @@ class SYNC_BinZip extends SYNC_PclZip {
 				if (is_array($read) && in_array($pipes[1], $read)) {
 					$w = fgets($pipes[1]);
 					// Logging all this really slows things down; use debug to mitigate
-					if ($w && $IWP_backup->debug) $iwp_backup_core->log("Output from zip: ".trim($w), 'debug');
+					if ($w && $this->debug) $this->log("Output from zip: ".trim($w), 'debug');
 					if (time() > $last_recorded_alive + 5) {
-						$iwp_backup_core->record_still_alive();
+						// $iwp_backup_core->record_still_alive();
 						$last_recorded_alive = time();
 					}
 					if (file_exists($this->path)) {
 						$new_size = @filesize($this->path);
-						if (!$something_useful_happened && $new_size > $orig_size + 20) {
-							$iwp_backup_core->something_useful_happened();
-							$something_useful_happened = true;
-						}
 						clearstatcache();
 						# Log when 20% bigger or at least every 50MB
 						if ($new_size > $last_size*1.2 || $new_size > $last_size + 52428800) {
-							$iwp_backup_core->log(basename($this->path).sprintf(": size is now: %.2f MB", round($new_size/1048576,1)));
+							$this->log(basename($this->path).sprintf(": size is now: %.2f MB", round($new_size/1048576,1)));
 							$last_size = $new_size;
 						}
 					}
@@ -322,11 +316,11 @@ class SYNC_BinZip extends SYNC_PclZip {
 
 			if ($ret != 0 && $ret != 12) {
 				if ($ret < 128) {
-					$iwp_backup_core->log("Binary zip: error (code: $ret - look it up in the Diagnostics section of the zip manual at http://www.info-zip.org/mans/zip.html for interpretation... and also check that your hosting account quota is not full)");
+					$this->log("Binary zip: error (code: $ret - look it up in the Diagnostics section of the zip manual at http://www.info-zip.org/mans/zip.html for interpretation... and also check that your hosting account quota is not full)");
 				} else {
-					$iwp_backup_core->log("Binary zip: error (code: $ret - a code above 127 normally means that the zip process was deliberately killed ... and also check that your hosting account quota is not full)");
+					$this->log("Binary zip: error (code: $ret - a code above 127 normally means that the zip process was deliberately killed ... and also check that your hosting account quota is not full)");
 				}
-				if (!empty($w) && !$IWP_backup->debug) $iwp_backup_core->log("Last output from zip: ".trim($w), 'debug');
+				if (!empty($w) && !$this->debug) $this->log("Last output from zip: ".trim($w), 'debug');
 				return false;
 			}
 
