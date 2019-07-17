@@ -19,7 +19,7 @@ class SYNC_Backup{
 
 	public $binzip = 0;
 	public $debug = false;
-	private $use_zip_object = 'IWP_MMB_ZipArchive';
+	public $use_zip_object = 'SYNC_ZipArchive';
 
 	public function __construct(){
 		if (@file_exists('/proc/user_beancounters') && @file_exists('/proc/meminfo') && @is_readable('/proc/meminfo')) {
@@ -38,7 +38,7 @@ class SYNC_Backup{
 			$binzip = $this->find_working_bin_zip();
 			if (is_string($binzip)) {
 				$this->binzip = $binzip;
-				$this->use_zip_object = 'IWP_MMB_BinZip';
+				$this->use_zip_object = 'SYNC_BinZip';
 			}
 		}
 	}
@@ -50,7 +50,7 @@ class SYNC_Backup{
 			return false;
 		}
 
-		$existing = $this->jobdata_get('binzip', null);
+		$existing = null;
 		# Theoretically, we could have moved machines, due to a migration
 		if (null !== $existing && (!is_string($existing) || @is_executable($existing))) return $existing;
 
@@ -78,15 +78,15 @@ class SYNC_Backup{
 				if ($handle) {
 					while (!feof($handle)) {
 						$w = fgets($handle);
-						if ($w && $logit) $this->log("Output: ".trim($w));
+						// if ($w && $logit) $this->log("Output: ".trim($w));
 					}
 					$ret = pclose($handle);
 					if ($ret !=0) {
-						if ($logit) $this->log("Binary zip: error (code: $ret)");
+						// if ($logit) $this->log("Binary zip: error (code: $ret)");
 						$all_ok = false;
 					}
 				} else {
-					if ($logit) $this->log("Error: popen failed");
+					// if ($logit) $this->log("Error: popen failed");
 					$all_ok = false;
 				}
 
@@ -212,7 +212,7 @@ class SYNC_ZipArchive extends ZipArchive {
 }
 endif;
 
-class IWP_MMB_PclZip {
+class SYNC_PclZip {
 
 	protected $pclzip;
 	protected $path;
@@ -383,7 +383,7 @@ class IWP_MMB_PclZip {
 
 }
 
-class IWP_MMB_BinZip extends IWP_MMB_PclZip {
+class SYNC_BinZip extends SYNC_PclZip {
 
 	private $binzip;
 
