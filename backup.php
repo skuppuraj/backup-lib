@@ -18,6 +18,7 @@ if (!defined('IWP_BINZIP_OPTS')) {
 class SYNC_Backup{
 
 	public $binzip = 0;
+	public $debug = false;
 	private $use_zip_object = 'IWP_MMB_ZipArchive';
 
 	public function __construct(){
@@ -146,7 +147,13 @@ class SYNC_Backup{
 				$found_second = false;
 				if ($all_ok && file_exists($backup_dir.'/binziptest/test.zip')) {
 					if (function_exists('gzopen')) {
-						if(!class_exists('PclZip')) require_once(ABSPATH.'/wp-admin/includes/class-pclzip.php');
+						if(!class_exists('PclZip')) {
+							if (file_exists(ABSPATH.'/wp-admin/includes/class-pclzip.php')) {
+								include_once(ABSPATH.'/wp-admin/includes/class-pclzip.php');
+							}else{
+								include_once('class-pclzip.php');
+							}
+						}
 						$zip = new PclZip($backup_dir.'/binziptest/test.zip');
 						$foundit = 0;
 						if (($list = $zip->listContent()) != 0) {
@@ -188,6 +195,14 @@ class SYNC_Backup{
 		@rmdir($backup_dir.'/binziptest/subdir1');
 		@unlink($backup_dir.'/binziptest/test.zip');
 		@rmdir($backup_dir.'/binziptest');
+	}
+	public function backups_dir_location() {
+		return dirname(__FILE__);
+	}
+	public function str_lreplace($search, $replace, $subject) {
+		$pos = strrpos($subject, $search);
+		if($pos !== false) $subject = substr_replace($subject, $replace, $pos, strlen($search));
+		return $subject;
 	}
 }
 
@@ -266,7 +281,13 @@ class IWP_MMB_PclZip {
 
 	public function open($path, $flags = 0) {
 	
-		if(!class_exists('PclZip')) include_once(ABSPATH.'/wp-admin/includes/class-pclzip.php');
+		if(!class_exists('PclZip')){
+			if (file_exists(ABSPATH.'/wp-admin/includes/class-pclzip.php')) {
+				include_once(ABSPATH.'/wp-admin/includes/class-pclzip.php');
+			}else{
+				include_once('class-pclzip.php');
+			}
+		} 
 		if(!class_exists('PclZip')) {
 			$this->last_error = "No PclZip class was found";
 			return false;
@@ -367,8 +388,8 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 	private $binzip;
 
 	public function __construct() {
-		global $IWP_backup;
-		$this->binzip = $IWP_backup->binzip;
+		global $backup_core;
+		$this->binzip = $backup_core->binzip;
 		if (!is_string($this->binzip)) {
 			$this->last_error = "No binary zip was found";
 			return false;
@@ -384,7 +405,7 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 
 		if ($file == $base) {
 			// Shouldn't happen; but see: https://bugs.php.net/bug.php?id=62119
-			$backup_core->log("File skipped due to unexpected name mismatch (locale: ".setlocale(LC_CTYPE, "0")."): file=$file add_as=$add_as", 'notice', false, true);
+			// $backup_core->log("File skipped due to unexpected name mismatch (locale: ".setlocale(LC_CTYPE, "0")."): file=$file add_as=$add_as", 'notice', false, true);
 		} else {
 			$rdirname = untrailingslashit($base);
 			# Note: $file equals $rdirname/$add_as
@@ -402,7 +423,7 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 			return false;
 		}
 
-		global $backup_core, $IWP_backup;
+		global $backup_core, $backup_core;
 		$backup_dir = $backup_core->backups_dir_location();
 
 		$activity = false;
@@ -420,7 +441,6 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 		$exec .= " -v -@ ".escapeshellarg($this->path);
 
 		$last_recorded_alive = time();
-		$something_useful_happened = $backup_core->something_useful_happened;
 		$orig_size = file_exists($this->path) ? filesize($this->path) : 0;
 		$last_size = $orig_size;
 		clearstatcache();
@@ -429,7 +449,7 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 
 		# If there are no files to add, but there are empty directories, then we need to make sure the directories actually get added
 		if (0 == count($this->addfiles) && 0 < count($this->adddirs)) {
-			$dir = realpath($IWP_backup->make_zipfile_source);
+			$dir = realpath($backup_core->make_zipfile_source);
 			$this->addfiles[$dir] = '././.';
 		}
 		// Loop over each destination directory name
@@ -473,17 +493,14 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 				if (is_array($read) && in_array($pipes[1], $read)) {
 					$w = fgets($pipes[1]);
 					// Logging all this really slows things down; use debug to mitigate
-					if ($w && $IWP_backup->debug) $backup_core->log("Output from zip: ".trim($w), 'debug');
+					// if ($w && $backup_core->debug) $backup_core->log("Output from zip: ".trim($w), 'debug');
 					if (time() > $last_recorded_alive + 5) {
 						$backup_core->record_still_alive();
 						$last_recorded_alive = time();
 					}
 					if (file_exists($this->path)) {
 						$new_size = @filesize($this->path);
-						if (!$something_useful_happened && $new_size > $orig_size + 20) {
-							$backup_core->something_useful_happened();
-							$something_useful_happened = true;
-						}
+						
 						clearstatcache();
 						# Log when 20% bigger or at least every 50MB
 						if ($new_size > $last_size*1.2 || $new_size > $last_size + 52428800) {
@@ -512,11 +529,11 @@ class IWP_MMB_BinZip extends IWP_MMB_PclZip {
 
 			if ($ret != 0 && $ret != 12) {
 				if ($ret < 128) {
-					$backup_core->log("Binary zip: error (code: $ret - look it up in the Diagnostics section of the zip manual at http://www.info-zip.org/mans/zip.html for interpretation... and also check that your hosting account quota is not full)");
+					// $backup_core->log("Binary zip: error (code: $ret - look it up in the Diagnostics section of the zip manual at http://www.info-zip.org/mans/zip.html for interpretation... and also check that your hosting account quota is not full)");
 				} else {
-					$backup_core->log("Binary zip: error (code: $ret - a code above 127 normally means that the zip process was deliberately killed ... and also check that your hosting account quota is not full)");
+					// $backup_core->log("Binary zip: error (code: $ret - a code above 127 normally means that the zip process was deliberately killed ... and also check that your hosting account quota is not full)");
 				}
-				if (!empty($w) && !$IWP_backup->debug) $backup_core->log("Last output from zip: ".trim($w), 'debug');
+				// if (!empty($w) && !$backup_core->debug) $backup_core->log("Last output from zip: ".trim($w), 'debug');
 				return false;
 			}
 
