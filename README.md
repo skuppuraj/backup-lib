@@ -5,7 +5,7 @@ This library use the following methods to take backup
 2.ZipArchive
 3.PclZip
 
-##Example:
+## Example:
 ```include('backup.php');
 $backup_array = array ();
 global $backup_core;
