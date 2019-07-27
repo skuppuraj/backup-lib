@@ -1,5 +1,6 @@
 # Sync backup
-Simple backup library to create zip file 
+Simple backup library to create zip file.
+ 
 This library use the following methods to take backup
 ```
 1.Bin 
