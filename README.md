@@ -1,9 +1,9 @@
 # Sync backup
 Simple backup library to create zip file 
 This library use the following methods to take backup
-1.Bin 
+```1.Bin 
 2.ZipArchive
-3.PclZip
+3.PclZip```
 
 ## Example:
 ```include('backup.php');
