@@ -1,9 +1,9 @@
 <?php
 
-if (!defined('IWP_ZIP_EXECUTABLE')) define('IWP_ZIP_EXECUTABLE', "/usr/bin/zip,/bin/zip,/usr/local/bin/zip,/usr/sfw/bin/zip,/usr/xdg4/bin/zip,/opt/bin/zip");
-if (!defined('IWP_ZIP_NOCOMPRESS')) define('IWP_ZIP_NOCOMPRESS', '.jpg,.jpeg,.png,.gif,.zip,.gz,.bz2,.xz,.rar,.mp3,.mp4,.mpeg,.avi,.mov');
-if (!defined('IWP_BINZIP_OPTS')) {
-	$zip_nocompress = array_map('trim', explode(',', IWP_ZIP_NOCOMPRESS));
+if (!defined('SYNC_ZIP_EXECUTABLE')) define('SYNC_ZIP_EXECUTABLE', "/usr/bin/zip,/bin/zip,/usr/local/bin/zip,/usr/sfw/bin/zip,/usr/xdg4/bin/zip,/opt/bin/zip");
+if (!defined('SYNC_ZIP_NOCOMPRESS')) define('SYNC_ZIP_NOCOMPRESS', '.jpg,.jpeg,.png,.gif,.zip,.gz,.bz2,.xz,.rar,.mp3,.mp4,.mpeg,.avi,.mov');
+if (!defined('SYNC_BINZIP_OPTS')) {
+	$zip_nocompress = array_map('trim', explode(',', SYNC_ZIP_NOCOMPRESS));
 	$zip_binzip_opts = '';
 	foreach ($zip_nocompress as $ext) {
 		if (empty($zip_binzip_opts)) {
@@ -12,7 +12,7 @@ if (!defined('IWP_BINZIP_OPTS')) {
 			$zip_binzip_opts .= ':'.$ext.':'.strtoupper($ext);
 		}
 	}
-	define('IWP_BINZIP_OPTS', $zip_binzip_opts);
+	define('SYNC_BINZIP_OPTS', $zip_binzip_opts);
 }
 
 class SYNC_Backup{
@@ -55,7 +55,7 @@ class SYNC_Backup{
 		if (null !== $existing && (!is_string($existing) || @is_executable($existing))) return $existing;
 
 		$backup_dir = $this->backups_dir_location();
-		foreach (explode(',', IWP_ZIP_EXECUTABLE) as $potzip) {
+		foreach (explode(',', SYNC_ZIP_EXECUTABLE) as $potzip) {
 			if (!@is_executable($potzip)) continue;
 			// if ($logit) $this->log("Testing: $potzip");
 
@@ -70,7 +70,7 @@ class SYNC_Backup{
 			if (is_file($backup_dir.'/binziptest/subdir1/subdir2/test.html')) {
 
 				$exec = "cd ".escapeshellarg($backup_dir)."; $potzip";
-				if (defined('IWP_BINZIP_OPTS') && IWP_BINZIP_OPTS) $exec .= ' '.IWP_BINZIP_OPTS;
+				if (defined('SYNC_BINZIP_OPTS') && SYNC_BINZIP_OPTS) $exec .= ' '.SYNC_BINZIP_OPTS;
 				$exec .= " -v -u -r binziptest/test.zip binziptest/subdir1";
 
 				$all_ok=true;
@@ -95,7 +95,7 @@ class SYNC_Backup{
 					file_put_contents($backup_dir.'/binziptest/subdir1/subdir2/test2.html', '<html><body><a href="https://infinitewp.com">InfiniteWP is a really great backup and restoration plugin for WordPress.</a></body></html>');
 					
 					$exec = $potzip;
-					if (defined('IWP_BINZIP_OPTS') && IWP_BINZIP_OPTS) $exec .= ' '.IWP_BINZIP_OPTS;
+					if (defined('SYNC_BINZIP_OPTS') && SYNC_BINZIP_OPTS) $exec .= ' '.SYNC_BINZIP_OPTS;
 					$exec .= " -v -@ binziptest/test.zip";
 
 					$all_ok=true;
@@ -437,7 +437,7 @@ class SYNC_BinZip extends SYNC_PclZip {
 			2 => array('pipe', 'w')
 		);
 		$exec = $this->binzip;
-		if (defined('IWP_BINZIP_OPTS') && IWP_BINZIP_OPTS) $exec .= ' '.IWP_BINZIP_OPTS;
+		if (defined('SYNC_BINZIP_OPTS') && SYNC_BINZIP_OPTS) $exec .= ' '.SYNC_BINZIP_OPTS;
 		$exec .= " -v -@ ".escapeshellarg($this->path);
 
 		$last_recorded_alive = time();
